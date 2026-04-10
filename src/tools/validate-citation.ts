@@ -87,7 +87,7 @@ export async function validateCitationTool(
         citation: input.citation,
         warnings: ['Could not parse citation format'],
       },
-      _metadata: generateResponseMetadata(db),
+      _meta: generateResponseMetadata(db),
     };
   }
 
@@ -99,7 +99,8 @@ export async function validateCitationTool(
         citation: input.citation,
         warnings: [`Document not found: "${parsed.documentRef}"`],
       },
-      _metadata: generateResponseMetadata(db),
+      _meta: generateResponseMetadata(db),
+      _error_type: 'not_found',
     };
   }
 
@@ -127,7 +128,8 @@ export async function validateCitationTool(
           document_title: doc.title,
           warnings: [...warnings, `Provision "${parsed.sectionRef}" not found in ${doc.title}`],
         },
-        _metadata: generateResponseMetadata(db),
+        _meta: generateResponseMetadata(db),
+        _error_type: 'not_found',
       };
     }
 
@@ -142,7 +144,7 @@ export async function validateCitationTool(
         status: doc.status,
         warnings,
       },
-      _metadata: generateResponseMetadata(db),
+      _meta: generateResponseMetadata(db),
     };
   }
 
@@ -156,6 +158,6 @@ export async function validateCitationTool(
       status: doc.status,
       warnings,
     },
-    _metadata: generateResponseMetadata(db),
+    _meta: generateResponseMetadata(db),
   };
 }

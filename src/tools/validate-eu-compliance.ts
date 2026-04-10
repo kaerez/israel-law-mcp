@@ -40,7 +40,7 @@ export async function validateEUCompliance(
         warnings: [`Document not found: "${input.document_id}"`],
         recommendations: [],
       },
-      _metadata: generateResponseMetadata(db),
+      _meta: generateResponseMetadata(db),
     };
   }
 
@@ -74,7 +74,7 @@ export async function validateEUCompliance(
         warnings: ['EU references not available in this database tier'],
         recommendations: [],
       },
-      _metadata: generateResponseMetadata(db),
+      _meta: generateResponseMetadata(db),
     };
   }
 
@@ -88,7 +88,7 @@ export async function validateEUCompliance(
         warnings: [],
         recommendations: ['No EU cross-references found for this statute. This may be a purely domestic law.'],
       },
-      _metadata: generateResponseMetadata(db),
+      _meta: generateResponseMetadata(db),
     };
   }
 
@@ -129,6 +129,6 @@ export async function validateEUCompliance(
       warnings,
       recommendations,
     },
-    _metadata: generateResponseMetadata(db),
+    _meta: generateResponseMetadata(db),
   };
 }

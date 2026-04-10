@@ -5,7 +5,7 @@
 import type Database from '@ansvar/mcp-sqlite';
 import { resolveDocumentId } from '../utils/statute-id.js';
 import { generateResponseMetadata, type ToolResponse } from '../utils/metadata.js';
-import { buildProvisionCitation } from '../utils/citation.js';
+import { buildProvisionCitation, type CitationMetadata } from '../utils/citation.js';
 
 export interface GetProvisionInput {
   document_id: string;
@@ -24,6 +24,7 @@ export interface ProvisionResult {
   content: string;
   article_number?: string;
   url?: string;
+  _citation?: CitationMetadata;
 }
 
 export async function getProvision(
@@ -34,10 +35,11 @@ export async function getProvision(
   if (!resolvedId) {
     return {
       results: [],
-      _metadata: {
+      _meta: {
         ...generateResponseMetadata(db),
         ...{ note: `No document found matching "${input.document_id}"` },
       },
+      _error_type: 'not_found',
     };
   }
 
@@ -45,7 +47,7 @@ export async function getProvision(
     'SELECT id, title, url FROM legal_documents WHERE id = ?'
   ).get(resolvedId) as { id: string; title: string; url: string | null } | undefined;
   if (!docRow) {
-    return { results: [], _metadata: generateResponseMetadata(db) };
+    return { results: [], _meta: generateResponseMetadata(db) };
   }
 
   // Specific provision lookup
@@ -101,16 +103,17 @@ export async function getProvision(
           docRow.url || null,
           null,
         ),
-        _metadata: generateResponseMetadata(db),
+        _meta: generateResponseMetadata(db),
       };
     }
 
     return {
       results: [],
-      _metadata: {
+      _meta: {
         ...generateResponseMetadata(db),
         ...{ note: `Provision "${ref}" not found in document "${resolvedId}"` },
       },
+      _error_type: 'not_found',
     };
   }
 
@@ -120,17 +123,30 @@ export async function getProvision(
   ).all(resolvedId) as Record<string, unknown>[];
 
   return {
-    results: provisions.map(p => ({
-      document_id: resolvedId,
-      document_title: docRow.title,
-      provision_ref: String(p.provision_ref),
-      chapter: p.chapter as string | null,
-      section: String(p.section),
-      title: p.title as string | null,
-      content: String(p.content),
-      article_number: String(p.provision_ref).replace(/^sec/, ''),
-      url: docRow.url ?? undefined,
-    })),
-    _metadata: generateResponseMetadata(db),
+    results: provisions.map(p => {
+      const provision_ref = String(p.provision_ref);
+      const section = String(p.section);
+      return {
+        document_id: resolvedId,
+        document_title: docRow.title,
+        provision_ref,
+        chapter: p.chapter as string | null,
+        section,
+        title: p.title as string | null,
+        content: String(p.content),
+        article_number: provision_ref.replace(/^sec/, ''),
+        url: docRow.url ?? undefined,
+        _citation: buildProvisionCitation(
+          resolvedId,
+          docRow.title,
+          provision_ref,
+          input.document_id,
+          section,
+          docRow.url ?? null,
+          null,
+        ),
+      };
+    }),
+    _meta: generateResponseMetadata(db),
   };
 }

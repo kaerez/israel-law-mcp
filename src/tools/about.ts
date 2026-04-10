@@ -3,6 +3,7 @@
  */
 
 import type Database from '@ansvar/mcp-sqlite';
+import { generateResponseMetadata } from '../utils/metadata.js';
 
 export interface AboutContext {
   version: string;
@@ -35,6 +36,7 @@ export function getAbout(db: InstanceType<typeof Database>, context: AboutContex
   }
 
   return {
+    _meta: generateResponseMetadata(db),
     name: 'Israel Law MCP',
     version: context.version,
     jurisdiction: 'IL',

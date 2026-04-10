@@ -7,6 +7,7 @@ import { buildFtsQueryVariants, buildLikePattern, sanitizeFtsInput } from '../ut
 import { normalizeAsOfDate } from '../utils/as-of-date.js';
 import { resolveDocumentId } from '../utils/statute-id.js';
 import { generateResponseMetadata, type ToolResponse } from '../utils/metadata.js';
+import { buildProvisionCitation, type CitationMetadata } from '../utils/citation.js';
 
 export interface SearchLegislationInput {
   query: string;
@@ -25,6 +26,7 @@ export interface SearchLegislationResult {
   title: string | null;
   snippet: string;
   relevance: number;
+  _citation?: CitationMetadata;
 }
 
 const DEFAULT_LIMIT = 10;
@@ -35,7 +37,7 @@ export async function searchLegislation(
   input: SearchLegislationInput,
 ): Promise<ToolResponse<SearchLegislationResult[]>> {
   if (!input.query || input.query.trim().length === 0) {
-    return { results: [], _metadata: generateResponseMetadata(db) };
+    return { results: [], _meta: generateResponseMetadata(db) };
   }
 
   const limit = Math.min(Math.max(input.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
@@ -51,10 +53,11 @@ export async function searchLegislation(
     if (!resolved) {
       return {
         results: [],
-        _metadata: {
+        _meta: {
           ...generateResponseMetadata(db),
           note: `No document found matching "${input.document_id}"`,
         },
+        _error_type: 'not_found',
       };
     }
   }
@@ -96,9 +99,10 @@ export async function searchLegislation(
       if (rows.length > 0) {
         queryStrategy = ftsQuery === queryVariants[0] ? 'exact' : 'fallback';
         const deduped = deduplicateResults(rows, limit);
+        addCitations(deduped);
         return {
           results: deduped,
-          _metadata: {
+          _meta: {
             ...generateResponseMetadata(db),
             ...(queryStrategy === 'fallback' ? { query_strategy: 'broadened' } : {}),
           },
@@ -145,9 +149,11 @@ export async function searchLegislation(
     try {
       const rows = db.prepare(likeSql).all(...likeParams) as SearchLegislationResult[];
       if (rows.length > 0) {
+        const deduped = deduplicateResults(rows, limit);
+        addCitations(deduped);
         return {
-          results: deduplicateResults(rows, limit),
-          _metadata: {
+          results: deduped,
+          _meta: {
             ...generateResponseMetadata(db),
             query_strategy: 'like_fallback',
           },
@@ -158,7 +164,24 @@ export async function searchLegislation(
     }
   }
 
-  return { results: [], _metadata: generateResponseMetadata(db) };
+  return { results: [], _meta: generateResponseMetadata(db) };
+}
+
+/**
+ * Annotate each result with per-item citation metadata.
+ */
+function addCitations(results: SearchLegislationResult[]): void {
+  for (const row of results) {
+    row._citation = buildProvisionCitation(
+      row.document_id,
+      row.document_title,
+      row.provision_ref,
+      row.document_id,
+      row.section,
+      null,
+      null,
+    );
+  }
 }
 
 /**
