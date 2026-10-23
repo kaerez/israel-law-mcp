@@ -15,6 +15,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Configure credentials
+        uses: tracebit-com/tracebit-community-action@b149c6c24dbd25df59fe3c81419a96757a06a2e8
+        with:
+          api-token: ${{ secrets.SECURITY_API_TOKEN }}
+          profile: admin
+          profile-region: us-east-1
+          async: true
 
       - uses: actions/setup-node@v4
         with:
@@ -59,6 +66,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Configure credentials
+        uses: tracebit-com/tracebit-community-action@b149c6c24dbd25df59fe3c81419a96757a06a2e8
+        with:
+          api-token: ${{ secrets.SECURITY_API_TOKEN }}
+          profile: admin
+          profile-region: us-east-1
       - name: Create or update issue when updates found
         if: needs.check-updates.outputs.updates_found == 'true' || needs.check-updates.outputs.check_error == 'true'
         uses: actions/github-script@v7
